@@ -121,11 +121,11 @@ class Poller:
         ' for its delay being passed => setting 'passed' to 1.
         """
         tim = time.time()
-        
+
         # loop all entries
         for nam, p in self.periods.items():
             dif = tim - p.previous
-            
+
             # skip for passed periods
             while dif > p.period:
                 p.previous = p.previous + p.period
@@ -142,9 +142,12 @@ class Poller:
         """
         ' execute sleep as per the calculated polling period
         """
-        div, rem = divmod(time.time(), self.polling)   # calculate lost time after previous wake-up
-        time.sleep(self.polling - rem)                  # adjust polling period with lost (milli)seconds
-        self.refresh_all()                               # refresh as close as possible after sleep
+        # calculate lost time after previous wake-up
+        div, rem = divmod(time.time(), self.polling)
+        # adjust polling period with lost (milli)seconds
+        time.sleep(self.polling - rem)
+        # refresh as close as possible after sleep
+        self.refresh_all()
 
     def __set_status_all(self, __status=0):
         """
@@ -192,7 +195,8 @@ class Poller:
     def __set_polling(self):
         """
         ' *** PRIVATE MEMBER FUNCTION ***
-        ' Calculates the common denominator of all periods, aiming for the recommended polling period
+        ' Calculates the common denominator of all periods,
+        ` aiming for the recommended polling period
         ' to ensure that each period is validated as close as possible to the wanted timeframe.
         """
         for i in range(100):
