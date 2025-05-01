@@ -51,7 +51,7 @@ are two steps.
     That iteration returns succesful when a common divisor is found for all periods and delays, when for all *periodics* the division  
     *`(<minimum period> + <delay>) / <div>`* has no fractional remainder.  
 
-2. if that common dominator is not found
+2. if that common divisor is not found, the ***polling period*** is set to **0.01** seconds.
 
 ## caveats
 
