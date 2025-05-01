@@ -158,7 +158,7 @@ class Poller:
         # through the initialization of the array self.schedules (0, 1, 2, ...)
         for schedule in self.schedules:
             for nam, p in schedule.items():
-                passed = passed + self.exec_function(nam, p)
+                passed = passed + (self.exec_function(nam, p) if p.passed else 0)
 
         return passed
 
