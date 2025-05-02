@@ -81,24 +81,12 @@ class Poller:
         self.minimum = min(self.minimum, p.period)
         self.poll_period = self.__set_polling()
 
-        ####
-        # principle:
-        # those schedules that share the same period but have a different delay
-        # have an upper limit in their 'execution window'
-        #    ('period' + 'delay') <= 'trigger' < ('period' + 'next')
-        # with 'next' being of the smallest next delay (of another function)
-        #
-        # Observe:
-        # This check and adjustment is only relevant / applicable for those schedules
-        # with the same priority - other (lower) priorities are supposed not to conflict.
-        #
-        # For now, this is a premise. It that premise would change, the code must be adjusted.
-        ####
-
         for schedule in self.schedules:
             for namx, x in schedule.items():
+                # find other schedules having the same period
                 if x.period == period:
                     for namy, y in schedule.items():
+                        # lower upper limit if another has a (new) delay that would conflict
                         if (x.delay < y.delay) and (x.upper > y.delay):
                             x.upper = y.delay
 
@@ -165,8 +153,7 @@ class Poller:
         return len(self.schedules)
 
     def __str__(self):
-        """ private function:
-        ' print all entries in an informal, readable format
+        """ private function: print all entries in an informal, readable format
         """
         if len(self.schedules) > 0:
             tmp = F"minimum: {self.minimum:8.3f} - polling: {self.poll_period:8.3f}\n"
@@ -183,10 +170,9 @@ class Poller:
         return tmp
 
     def __set_polling(self):
-        """ private function:
-        ' Calculates the common divisor of all periodics,
-        ` aiming for the recommended polling period to ensure
-        ' that each period is validated as close as possible to the wanted timeframe.
+        """ private function:calculates the common divisor of all periodics,
+            aiming for the recommended polling period to ensure that each period
+            is validated as close as possible to the wanted timeframe.
         """
         getcontext().prec = 6  # in order to have 0.000000...x evaluated as 0
 

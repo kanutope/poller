@@ -13,7 +13,18 @@ All depends on the use case.
 
 ## concepts
 
-The center piece is a single *Poller* instance that manages a list of *Periodics*. The latter is basically a *named* function and a period (seconds) in which it has to be executed repeatedly.
+The center piece is a single *Poller* instance that manages a prioritized array of *Periodics* - priorities ranging from 0 (highest) to 3 (lowest). The *Periodics* is a dictionary of *named* functions having a period (seconds) in which it has to be executed repeatedly - potentially with a delay, see below [## sequencing] and [## example].
+
+Usage: initialize the Poller by adding functions to it
+
+    `poll.add_period("func3", 0.5, func3, delay=0.1, prio=1)`
+
+Ultimately the application of the Poller implies entering an endless loop. Hence
+
+    `poll.polling()`
+
+should always be the last executable statement.cAnything after that statement will never be executed -
+unless one wants to implement some error trapping...
 
 ## sequencing
 
@@ -23,10 +34,25 @@ In version 2.0, the concept of ***priority*** is introduced. The function can ha
 
 ## principles
 
+### interdepency between two functions
+
 If multiple functions have dependencies, meaning that the execution of *func2* depends on the completion of *func1*, than
 they either have a different *delay* or they get a different *priority* assigned.
 
 When a function has a non-zero ***delay***, that *delay* is always smaller than its ***period***.
+
+### same period different delay
+
+Those schedules that share the same period but have a different delay
+have an upper limit for their 'execution window'  
+   `('period' + 'delay') <= 'trigger' < ('period' + 'next')`  
+with 'next' being the smallest next delay - of another function having the same period.
+
+<u>Observe</u>:
+This check and adjustment is only relevant / applicable for those schedules
+with the same priority - other (lower) priorities are supposed not to conflict.
+
+For now, this is a premise. If that premise would change, the code must be adjusted.
 
 ## implications
 
@@ -58,7 +84,7 @@ are two steps.
 At execution time, since the functions are executed by one and the same controller, they
 cannot take a variable set of parameters, since the controller is agnostic about them
 
-### example
+## example
 
 An example is added to this package - see `example/main.py`. It gives output like this:
 
