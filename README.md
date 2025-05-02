@@ -57,3 +57,31 @@ are two steps.
 
 At execution time, since the functions are executed by one and the same controller, they
 cannot take a variable set of parameters, since the controller is agnostic about them
+
+### example
+
+An example is added to this package - see `example/main.py`. It gives output like this:
+
+``` tty
+    minimum:    0.500 - polling:    0.100
+    prio:0 - FUNC:func2 - PREV:1746182484.000, PER:1.200, DLAY:0.300, UPPR:1.200
+    prio:1 - FUNC:func1 - PREV:1746182484.000, PER:1.000, DLAY:0.000, UPPR:1.000
+    prio:1 - FUNC:func3 - PREV:1746182484.500, PER:0.500, DLAY:0.100, UPPR:0.500
+
+    2025-05-02T12:41:25.000 - func1
+    2025-05-02T12:41:25.102 - func3
+    2025-05-02T12:41:25.504 - func2
+    2025-05-02T12:41:25.605 - func3
+    2025-05-02T12:41:26.003 - func1
+    2025-05-02T12:41:26.104 - func3
+    2025-05-02T12:41:26.600 - func3
+    2025-05-02T12:41:26.701 - func2
+    2025-05-02T12:41:27.004 - func1
+    2025-05-02T12:41:27.105 - func3
+    2025-05-02T12:41:27.602 - func3
+    2025-05-02T12:41:27.904 - func2
+    2025-05-02T12:41:28.000 - func1
+    2025-05-02T12:41:28.104 - func3
+    2025-05-02T12:41:28.602 - func3
+    2025-05-02T12:41:29.001 - func1
+```
