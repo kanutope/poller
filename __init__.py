@@ -7,7 +7,7 @@
 from dataclasses import dataclass
 from decimal import Decimal, getcontext
 from math import log10
-import time
+from time import time, sleep
 
 from commons import epoch2str
 
@@ -19,11 +19,10 @@ class Periodic:
     def __init__(self, period, func=None, delay=0, prio=0):
         """ initialising
         """
-        tim = time.time()
+        tim = time()
         self.period = period
         div, rem = divmod(tim, period)
         self.previous = div * period
-        self.passed = 0
         self.function = func
         self.delay = delay
         self.upper = period
@@ -35,8 +34,8 @@ class Periodic:
         ' print complete structure in an informal, readable format
         """
         func = '<none>' if self.function is None else self.function.__name__
-        return f"PER:{self.period:.3f}, DLAY:{self.delay:.3f}, " \
-            f"UPPR:{self.upper:.3f}, PREV:{self.previous:.3f} , PASS:{self.passed:d} - FUNC:{func:s}"
+        return f"FUNC:{func:s} - PREV:{self.previous:.3f}, PER:{self.period:.3f}, "\
+            f"DLAY:{self.delay:.3f}, UPPR:{self.upper:.3f}"
 
 
 class Poller:
@@ -58,7 +57,7 @@ class Poller:
         for i in range(self.MAXPRIO):
             self.schedules.append({})
 
-    def set_period(self, name, period, func=None, delay=0, prio=0):
+    def add_period(self, name, period, func=None, delay=0, prio=0):
         """ adding a new interval to the array, identified by its 'name'.
 
             v2.0: list of periodics has now as top-level index the priority:
@@ -106,80 +105,26 @@ class Poller:
                             x.upper = y.delay
 
         return p
-
-    def check_by_name(self, name):
+    
+    def polling(self):
+        """ core method - performing repeated sleep and execute cycles
         """
-        ' check the period matching the given name for its period being passed ('passed' = 1).
-        ' This function clears 'passed' at every call. Hence when it returns '1', all
-        ' dependent events must be handled following this one check.
-        ' Observe the update of 'passed' is done through the global 'refresh' method.
+        self.__reset_period() # reset all
+        while True:
+            self.__sleep()
+            # refresh as close as possible after sleep
+            lst = self.__check_all()
+            # and execute sequentially one after another
+            for nam, p in lst:
+                p.function(nam)
+
+    def __check_all(self):
+        """ given the current time, identify the periodics that match the given time,
+            taking the delay into account, and put them in the list to be executed.
         """
-        for schedule in self.schedules:
-            if name in schedule:
-                p = schedule[name]
-                passed = p.passed
-                p.passed = 0
-                return passed
+        tim = time()
 
-        return -1
-
-    def exec_by_name(self, name):
-        """ execute entry (function) by name.
-        """
-        for schedule in self.schedules:
-            if name in schedule:
-                p = schedule[name]
-                passed = p.passed
-                p.passed = 0
-                if passed:
-                    p.function(name)
-
-                return passed
-
-        return -1
-
-    def exec_function(self, name, periodic):
-        """ executes one specific function
-        """
-        if periodic.passed:
-            periodic.passed = 0
-            periodic.function(name)
-            return 1
-
-        return 0
-
-    def exec_all(self):
-        """ loop all entries (functions) and execute them
-        """
-        passed = 0
-
-        # Observe:
-        # by implementation, the functions are triggered in priority decreasing (in value)
-        # through the initialization of the array self.schedules (0, 1, 2, ...)
-        for schedule in self.schedules:
-            for nam, p in schedule.items():
-                passed = passed + (self.exec_function(nam, p) if p.passed else 0)
-
-        return passed
-
-    def check_all(self):
-        """ loop all entries and get those 'passed'
-        """
-        lst = []
-        for schedule in self.schedules:
-            for nam, struct in schedule.items():
-                if struct.passed:
-                    lst.append(nam)
-
-        return lst
-
-    def refresh_all(self):
-        """
-        ' taking the current time, mark the periodics matching the given index
-        ' for its delay being passed => setting 'passed' to 1.
-        """
-        tim = time.time()
-
+        execute = []
         # loop all entries
         for schedule in self.schedules:
             for nam, p in schedule.items():
@@ -193,66 +138,50 @@ class Poller:
 
                 # check for triggering
                 if (p.delay <= dif) and (dif < p.upper):
-                    p.passed = 1
                     p.previous+= p.period
+                    execute.append((nam, p))
 
-        return 0
+        return execute
 
-    def sleep(self):
+    def __sleep(self):
         """
         ' execute sleep as per the calculated polling period
         """
         # calculate lost time after previous wake-up
-        div, rem = divmod(time.time(), self.poll_period)
+        div, rem = divmod(time(), self.poll_period)
         # adjust polling period with lost (milli)seconds
-        time.sleep(self.poll_period - rem)
-        # refresh as close as possible after sleep
-        self.refresh_all()
+        sleep(self.poll_period - rem)
 
-    def __set_status_all(self, __status=0):
+    def __reset_period(self):
         """
         ' reset the whole array of periodics (intervals), updating the 'previous' time
-        ' to the current time and clearing 'passed' - or setting passed to __status given.
+        ' to the next periodic later than now
         """
-        tim = time.time()
+        tim = time()
 
         for schedule in self.schedules:
             for nam, p in schedule.items():
                 div, rem = divmod(tim, p.period)
                 p.previous = (div + 1) * p.period
-                p.passed = __status
 
         return len(self.schedules)
-
-    def reset_all(self):
-        """
-        ' reset the whole array of periodics (intervals), updating the 'previous' time
-        ' to the current time and *setting* 'passed' to 0.
-        ' Purpose is to start the period measurement from this call onwards.
-        """
-        return self.__set_status_all(0)
-
-    def set_all(self, status: int):
-        """
-        ' reset the whole array of periodics (intervals), updating the 'previous' time
-        ' to the current time and *setting* 'passed' to 'status'.
-        ' Purpose is to restart the period measurement from this call onwards.
-        """
-        return self.__set_status_all(status)
 
     def __str__(self):
         """ private function:
         ' print all entries in an informal, readable format
         """
         if len(self.schedules) > 0:
-            tmp = F"Minimum: {self.minimum:8.3f} - polling: {self.poll_period:8.3f}\n"
+            tmp = F"minimum: {self.minimum:8.3f} - polling: {self.poll_period:8.3f}\n"
 
+            i = 0
             for schedule in self.schedules:
                 for nam, p in schedule.items():
-                    tmp = f"{tmp}{nam} - {p}\n"
+                    tmp = f"{tmp}prio:{i} - {p}\n"
+                i+= 1
 
         else:
             tmp = 'Poller: <empty>'
+            
         return tmp
 
     def __set_polling(self):
